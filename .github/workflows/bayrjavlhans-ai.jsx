@@ -1,0 +1,173 @@
+import React, { useState, useRef, useEffect } from "react";
+import { Send, Square, Sparkles } from "lucide-react";
+
+export default function BayrjavlhansAI() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, loading]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height =
+        Math.min(textareaRef.current.scrollHeight, 160) + "px";
+    }
+  }, [input]);
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+
+    const newMessages = [...messages, { role: "user", content: text }];
+    setMessages(newMessages);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          system:
+            "You are bayrjavlhan's ai, a helpful, concise personal AI assistant created by bayrjavlhan. If anyone asks who made you, who created you, who built you, or what company is behind you, always answer that you were created by bayrjavlhan — never mention Anthropic or any other company. Keep responses clear and to the point unless asked for depth.",
+          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+      const data = await response.json();
+      const textBlock = (data.content || []).find((c) => c.type === "text");
+      const reply = textBlock ? textBlock.text : "Hmm, I didn't get a response. Try again?";
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Something went wrong reaching the model. Please try again." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  };
+
+  const suggestions = [
+    "Summarize a topic for me",
+    "Help me plan my day",
+    "Explain something simply",
+    "Draft a quick message",
+  ];
+
+  return (
+    <div className="flex flex-col h-screen w-full bg-neutral-200 text-neutral-900 font-sans">
+      {/* Header */}
+      <header className="flex items-center gap-3 px-5 py-4 border-b border-neutral-300 bg-neutral-100">
+        <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center shrink-0">
+          <Sparkles size={16} className="text-white" />
+        </div>
+        <div>
+          <h1 className="text-sm font-semibold tracking-tight text-neutral-800">
+            bayrjavlhan's ai
+          </h1>
+          <p className="text-xs text-neutral-500">always here to help</p>
+        </div>
+      </header>
+
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
+        {messages.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center gap-6 max-w-md mx-auto text-center">
+            <div className="w-14 h-14 rounded-full bg-neutral-700 flex items-center justify-center">
+              <Sparkles size={24} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-neutral-800">
+                bayrjavlhan's ai
+              </h2>
+              <p className="text-sm text-neutral-500 mt-1">
+                Ask me anything to get started.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 w-full">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setInput(s)}
+                  className="text-left text-xs px-3 py-2 rounded-xl bg-white border border-neutral-300 text-neutral-700 hover:border-neutral-400 hover:shadow-sm transition"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto flex flex-col gap-4">
+            {messages.map((m, i) => (
+              <div
+                key={i}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                    m.role === "user"
+                      ? "bg-neutral-700 text-white rounded-br-sm"
+                      : "bg-white text-neutral-800 border border-neutral-300 rounded-bl-sm"
+                  }`}
+                >
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div className="flex justify-start">
+                <div className="bg-white border border-neutral-300 rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1 items-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-bounce [animation-delay:-0.3s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-bounce [animation-delay:-0.15s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 animate-bounce" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Input bar */}
+      <div className="border-t border-neutral-300 bg-neutral-100 px-4 py-3">
+        <div className="max-w-2xl mx-auto flex items-end gap-2 bg-white border border-neutral-300 rounded-2xl px-3 py-2 shadow-sm">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Message bayrjavlhan's ai..."
+            rows={1}
+            className="flex-1 resize-none bg-transparent outline-none text-sm text-neutral-800 placeholder-neutral-400 py-1.5 max-h-40"
+          />
+          <button
+            onClick={send}
+            disabled={!input.trim() || loading}
+            className="shrink-0 w-9 h-9 rounded-full bg-white border border-neutral-300 flex items-center justify-center text-neutral-700 hover:bg-neutral-50 hover:border-neutral-400 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-sm"
+          >
+            {loading ? <Square size={14} /> : <Send size={16} />}
+          </button>
+        </div>
+        <p className="text-[10px] text-neutral-400 text-center mt-2">
+          bayrjavlhan's ai can make mistakes. Check important info.
+        </p>
+      </div>
+    </div>
+  );
+}
